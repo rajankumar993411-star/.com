@@ -1,0 +1,990 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Personal Payment Tracker</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
+    <style>
+        body { font-family: 'Inter', sans-serif; background-color: #f7f7f7; }
+        .card { box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -2px rgba(0, 0, 0, 0.1); }
+        .debit { color: #dc2626; } /* text-red-600 */
+        .credit { color: #16a34a; } /* text-green-600 */
+        .auth-container { min-height: 100vh; display: flex; justify-content: center; align-items: center; }
+    </style>
+</head>
+<body class="min-h-screen p-4 md:p-8">
+
+    <!-- Authentication Screen -->
+    <div id="auth-container" class="auth-container">
+        <div class="w-full max-w-md p-8 bg-white rounded-xl card text-center">
+            <h1 class="text-3xl font-extrabold text-gray-800 mb-6" id="auth-title">Sign In</h1>
+            
+            <form id="auth-form" class="space-y-4">
+                <input type="email" id="auth-email" placeholder="Email" required 
+                       class="mt-1 block w-full rounded-md border-gray-300 shadow-sm p-3 border focus:ring-blue-500 focus:border-blue-500">
+                <input type="password" id="auth-password" placeholder="Password" required 
+                       class="mt-1 block w-full rounded-md border-gray-300 shadow-sm p-3 border focus:ring-blue-500 focus:border-blue-500">
+                
+                <button type="submit" id="auth-submit-btn" class="w-full py-3 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition ease-in-out duration-150">
+                    Sign In
+                </button>
+                <div id="auth-status" class="text-sm pt-2 text-red-600 hidden"></div>
+            </form>
+
+            <button id="reset-password-btn" type="button" class="mt-4 text-sm text-red-500 hover:text-red-700 w-full text-center transition duration-150">
+                Forgot Password?
+            </button>
+            <button id="auth-toggle-btn" class="mt-2 text-blue-600 hover:text-blue-700 text-sm">
+                Need an account? Sign Up
+            </button>
+        </div>
+    </div>
+
+    <!-- Ledger Type Selection Screen -->
+    <div id="account-selection-container" class="auth-container hidden">
+        <div class="w-full max-w-md p-8 bg-white rounded-xl card text-center">
+            <h1 class="text-3xl font-extrabold text-gray-800 mb-6">Select Ledger Type</h1>
+            <p class="text-gray-600 mb-8">Choose the type of account you wish to manage.</p>
+            
+            <div class="space-y-4">
+                <button data-type="creditCard" class="select-account-type-btn w-full py-4 px-4 rounded-md shadow-sm text-lg font-medium text-white bg-indigo-600 hover:bg-indigo-700 transition duration-150">
+                    Credit Card Ledger
+                </button>
+                <button data-type="savingsBank" class="select-account-type-btn w-full py-4 px-4 rounded-md shadow-sm text-lg font-medium text-white bg-teal-600 hover:bg-teal-700 transition duration-150">
+                    Savings Bank Account Ledger
+                </button>
+            </div>
+
+            <button id="selection-logout-btn" class="mt-8 py-1 px-3 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-red-500 hover:bg-red-600 transition duration-150">
+                Logout
+            </button>
+        </div>
+    </div>
+
+    <!-- NEW: Specific Account Selection and Management Screen -->
+    <div id="specific-account-selection-container" class="auth-container hidden">
+        <div class="w-full max-w-2xl p-8 bg-white rounded-xl card text-center">
+            <h1 class="text-3xl font-extrabold text-gray-800 mb-2" id="specific-ledger-title"></h1>
+            <p class="text-sm text-gray-500 mb-6">Select an existing account to view its ledger or add a new one.</p>
+
+            <!-- Add New Account Form -->
+            <form id="add-specific-account-form" class="flex flex-col sm:flex-row gap-2 mb-4 items-center justify-center">
+                <input type="text" id="new-account-name" placeholder="New Account Name (e.g., HDFC Regalia)" required 
+                       class="flex-grow rounded-md border-gray-300 shadow-sm p-2 border focus:ring-indigo-500 focus:border-indigo-500 w-full sm:w-auto">
+                <button type="submit" class="w-full sm:w-auto py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-indigo-600 hover:bg-indigo-700 transition duration-150">
+                    Add Account
+                </button>
+            </form>
+            
+            <div id="specific-account-status" class="text-sm pt-2 mb-4 hidden"></div>
+
+            <!-- List of Existing Accounts -->
+            <div id="specific-account-list" class="space-y-3 max-h-80 overflow-y-auto p-2">
+                <p class="text-gray-500" id="no-accounts-message">No accounts found. Please add one above.</p>
+            </div>
+            
+            <button id="specific-selection-back-btn" class="mt-8 text-blue-600 hover:text-blue-700 text-sm">
+                ← Back to Ledger Selection
+            </button>
+        </div>
+    </div>
+
+
+    <!-- Main Application Screen -->
+    <div id="app-container" class="max-w-6xl mx-auto hidden">
+        <!-- Header -->
+        <header class="text-center mb-6 flex justify-between items-center">
+            <h1 class="4xl font-extrabold text-gray-800" id="app-title">My Financial Ledger</h1>
+            <div class="flex space-x-3">
+                <button id="change-account-btn" class="py-1 px-3 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-gray-600 hover:bg-gray-700 transition duration-150">
+                    Change Account
+                </button>
+                <button id="change-ledger-type-btn" class="py-1 px-3 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-gray-500 hover:bg-gray-600 transition duration-150">
+                    Change Ledger Type
+                </button>
+                <button id="logout-btn" class="py-1 px-3 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-red-500 hover:bg-red-600 transition duration-150">
+                    Logout
+                </button>
+            </div>
+        </header>
+
+        <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+
+            <!-- Transaction Input Form (Left/Top) -->
+            <div class="lg:col-span-1 p-6 bg-white rounded-xl card h-fit">
+                <h2 class2="2xl font-semibold mb-6 text-gray-700" id="form-header">Record Transaction</h2>
+                <form id="transaction-form" class="space-y-4">
+                    
+                    <!-- Display Current Account -->
+                    <div class="p-3 bg-gray-50 rounded-md border border-gray-200">
+                        <label class="block text-sm font-medium text-gray-500">Currently Recording To:</label>
+                        <p id="current-specific-account-display" class="font-semibold text-gray-800 text-lg mt-1">N/A</p>
+                    </div>
+
+                    <div>
+                        <label for="date" class="block text-sm font-medium text-gray-700">Date</label>
+                        <input type="date" id="date" required class="mt-1 block w-full rounded-md border-gray-300 shadow-sm p-2 border focus:ring-blue-500 focus:border-blue-500">
+                    </div>
+
+                    <div>
+                        <label for="description" class="block text-sm font-medium text-gray-700">Description</label>
+                        <input type="text" id="description" placeholder="e.g., Groceries, Rent, Salary" required class="mt-1 block w-full rounded-md border-gray-300 shadow-sm p-2 border focus:ring-blue-500 focus:border-blue-500">
+                    </div>
+
+                    <div>
+                        <label for="amount" class="block text-sm font-medium text-gray-700">Amount (₹)</label>
+                        <input type="number" id="amount" step="0.01" min="0.01" required class="mt-1 block w-full rounded-md border-gray-300 shadow-sm p-2 border focus:ring-blue-500 focus:border-blue-500">
+                    </div>
+
+                    <div>
+                        <label for="type" class="block text-sm font-medium text-gray-700">Type</label>
+                        <select id="type" required class="mt-1 block w-full rounded-md border-gray-300 shadow-sm p-2 border focus:ring-blue-500 focus:border-blue-500 bg-white">
+                            <option value="debit">Debit (Expense)</option>
+                            <option value="credit">Credit (Income)</option>
+                        </select>
+                    </div>
+
+                    <div id="category-field">
+                        <label for="category" class="block text-sm font-medium text-gray-700">Expense Category</label>
+                        <select id="category" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm p-2 border focus:ring-blue-500 focus:border-blue-500 bg-white">
+                            <option value="Other">Other Expenses</option>
+                            <option value="Food">Food & Groceries</option>
+                            <option value="Education">Education</option>
+                            <option value="Clothing">Clothing</option>
+                            <option value="Rent">Rent / Mortgage</option>
+                            <option value="Utilities">Utilities (Bills)</option>
+                            <option value="Entertainment">Entertainment</option>
+                            <option value="Transportation">Transportation</option>
+                        </select>
+                    </div>
+                    
+                    <button type="submit" class="w-full py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition ease-in-out duration-150">
+                        Record Transaction
+                    </button>
+                    <div id="transaction-status" class="text-sm pt-2 text-center hidden"></div>
+                </form>
+            </div>
+
+            <!-- Transaction List & Summary (Right/Bottom) -->
+            <div class="lg:col-span-2 space-y-6">
+                
+                <!-- Summary Card -->
+                <div class="grid grid-cols-3 gap-4">
+                    <div class="p-4 bg-white rounded-xl card text-center">
+                        <p class="text-sm text-gray-500">Total Income (Credit)</p>
+                        <p id="total-credit" class="text-2xl font-bold credit mt-1">₹0.00</p>
+                    </div>
+                    <div class="p-4 bg-white rounded-xl card text-center">
+                        <p class="text-sm text-gray-500">Total Expense (Debit)</p>
+                        <p id="total-debit" class="2xl font-bold debit mt-1">₹0.00</p>
+                    </div>
+                    <div class="p-4 bg-white rounded-xl card text-center">
+                        <p class="text-sm text-gray-500">Net Balance</p>
+                        <p id="net-balance" class="2xl font-bold mt-1 text-gray-800">₹0.00</p>
+                    </div>
+                </div>
+
+                <!-- Filter Card -->
+                <div class="p-6 bg-white rounded-xl card">
+                    <h2 class="2xl font-semibold mb-4 text-gray-700">Filter Transactions</h2>
+                    <form id="filter-form" class="flex flex-col sm:flex-row gap-4 items-end">
+                        <div class="flex-1 w-full">
+                            <label for="filter-start-date" class="block text-sm font-medium text-gray-700">Start Date</label>
+                            <input type="date" id="filter-start-date" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm p-2 border focus:ring-blue-500 focus:border-blue-500">
+                        </div>
+                        <div class="flex-1 w-full">
+                            <label for="filter-end-date" class="block text-sm font-medium text-gray-700">End Date</label>
+                            <input type="date" id="filter-end-date" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm p-2 border focus:ring-blue-500 focus:border-blue-500">
+                        </div>
+                        <button type="submit" id="apply-filter-btn" class="w-full sm:w-auto px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-green-600 hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500 transition duration-150">
+                            Apply Filter
+                        </button>
+                        <button type="button" id="clear-filter-btn" class="w-full sm:w-auto px-4 py-2 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-gray-500 transition duration-150">
+                            Clear
+                        </button>
+                    </form>
+                </div>
+                
+                <!-- Transaction History -->
+                <div class="p-6 bg-white rounded-xl card">
+                    <h2 class="2xl font-semibold mb-6 text-gray-700">Transaction History</h2>
+                    
+                    <!-- Transaction Table/List -->
+                    <div class="overflow-x-auto">
+                        <table class="min-w-full divide-y divide-gray-200">
+                            <thead class="bg-gray-50">
+                                <tr>
+                                    <th class="px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Date</th>
+                                    <th class="px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Account</th>
+                                    <th class="px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Description</th>
+                                    <th class="px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Category</th>
+                                    <th class="px-3 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Amount (₹)</th>
+                                    <th class="px-3 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">Action</th>
+                                </tr>
+                            </thead>
+                            <tbody id="transaction-list" class="bg-white divide-y divide-gray-200">
+                                <!-- Transactions will be injected here -->
+                                <tr>
+                                    <td colspan="6" class="px-3 py-4 text-center text-gray-500" id="loading-indicator">
+                                        Please select an account to view transactions.
+                                    </td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Firebase Imports and Logic -->
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
+        import { getAuth, signInWithEmailAndPassword, createUserWithEmailAndPassword, onAuthStateChanged, signOut, sendPasswordResetEmail } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+        // FIX: Added 'limit' to the import list to fix the ReferenceError inside handleDeleteAccount
+        import { getFirestore, collection, addDoc, onSnapshot, query, orderBy, doc, deleteDoc, where, getDocs, limit } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+        import { setLogLevel } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+
+        // setLogLevel('debug'); // Uncomment for debugging
+
+        // ---------------------------------------------------------------------------------
+        // !!! IMPORTANT !!! REPLACE ALL THESE PLACEHOLDER VALUES WITH YOUR ACTUAL FIREBASE CONFIG.
+        // ---------------------------------------------------------------------------------
+        const firebaseConfig = {
+            apiKey: "AIzaSyCxgScBxQ1habUoF4GRSgNeUgAiAoSxQY0",
+            authDomain: "transaction-56206.firebaseapp.com",
+            projectId: "transaction-56206",
+            storageBucket: "transaction-56206.firebasestorage.app",
+            messagingSenderId: "240740017957",
+            appId: "1:240740017957:web:87b3932cfb204c4c7f9ccc",
+        };
+        
+        let db, auth, userId;
+        let isSigningUp = false;
+        let allTransactions = []; // Global array for client-side filtering
+        let selectedAccountType = null; // Tracks 'creditCard' or 'savingsBank'
+        let selectedSpecificAccountName = null; // NEW: Tracks the selected account name (e.g., "HDFC Regalia")
+        let unsubscribeSpecificAccounts = null; // NEW: Listener for the specific accounts list
+        let unsubscribeTransactions = null; // Listener for the transaction list
+
+
+        // --- DOM ELEMENTS ---
+        const authContainer = document.getElementById('auth-container');
+        const accountSelectionContainer = document.getElementById('account-selection-container');
+        const specificAccountSelectionContainer = document.getElementById('specific-account-selection-container');
+        const appContainer = document.getElementById('app-container');
+        const appTitle = document.getElementById('app-title');
+        const authTitle = document.getElementById('auth-title');
+        const authSubmitBtn = document.getElementById('auth-submit-btn');
+        const authToggleBtn = document.getElementById('auth-toggle-btn');
+        const authStatusEl = document.getElementById('auth-status');
+        const transactionStatusEl = document.getElementById('transaction-status');
+        const categoryField = document.getElementById('category-field');
+        // New buttons
+        const changeAccountBtn = document.getElementById('change-account-btn');
+        const changeLedgerTypeBtn = document.getElementById('change-ledger-type-btn');
+        const specificAccountList = document.getElementById('specific-account-list');
+        const specificAccountStatus = document.getElementById('specific-account-status');
+
+
+        // --- UTILITIES ---
+
+        function formatCurrency(amount) {
+            // Using 'en-IN' locale for Indian numbering and Rupee symbol (₹)
+            return new Intl.NumberFormat('en-IN', {
+                style: 'currency',
+                currency: 'INR',
+                minimumFractionDigits: 2,
+                maximumFractionDigits: 2
+            }).format(amount);
+        }
+
+        function showElement(el) { el.classList.remove('hidden'); }
+        function hideElement(el) { el.classList.add('hidden'); }
+
+        function showStatus(message, colorClass, element) {
+            element.textContent = message;
+            element.className = `text-sm pt-2 text-center ${colorClass}`;
+            showElement(element);
+
+            // Hide after a few seconds unless it's a critical setup error
+            if (!message.includes('Local setup incomplete') && !message.includes('Database not configured') && colorClass !== 'text-red-600') {
+                setTimeout(() => {
+                    hideElement(element);
+                }, 5000);
+            }
+        }
+
+        // Returns the collection reference for transactions based on the account type
+        function getCollectionPath(type) {
+            if (!userId) return null;
+            if (type === 'creditCard') {
+                return collection(db, 'users', userId, 'creditCardTransactions');
+            } else if (type === 'savingsBank') {
+                return collection(db, 'users', userId, 'savingsBankTransactions');
+            }
+            return null;
+        }
+        
+        // Returns the collection reference for specific accounts (e.g., HDFC Regalia, SBI Savings)
+        function getSpecificAccountsCollectionPath(type) {
+            if (!userId) return null;
+            const pathSegment = type === 'creditCard' ? 'creditCardAccounts' : 'savingsBankAccounts';
+            return collection(db, 'users', userId, pathSegment);
+        }
+
+        function unsubscribeAllListeners() {
+            if (unsubscribeSpecificAccounts) {
+                unsubscribeSpecificAccounts();
+                unsubscribeSpecificAccounts = null;
+            }
+            if (unsubscribeTransactions) {
+                unsubscribeTransactions();
+                unsubscribeTransactions = null;
+            }
+        }
+
+        function handleLogout() {
+            unsubscribeAllListeners(); // Clear all listeners on logout
+            signOut(auth);
+            // State cleanup is handled by onAuthStateChanged listener
+        }
+
+        // --- ACCOUNT SELECTION & NAVIGATION ---
+
+        // Step 1: Handle selecting the general ledger type
+        function handleAccountTypeSelection(type) {
+            unsubscribeAllListeners(); // Stop transaction listener if coming from main app
+            selectedAccountType = type;
+            let titleText = type === 'creditCard' ? 'Credit Card Accounts' : 'Savings Bank Accounts';
+            
+            // Update UI for the new selection screen
+            document.getElementById('specific-ledger-title').textContent = titleText;
+            hideElement(accountSelectionContainer);
+            showElement(specificAccountSelectionContainer);
+            hideElement(specificAccountStatus); // Clear status on screen transition
+
+            // Load list of specific accounts for this type
+            setupSpecificAccountListener();
+        }
+        
+        // Step 2: Handle selecting a specific account (e.g., HDFC Regalia)
+        function handleSpecificAccountSelect(accountName) {
+            unsubscribeAllListeners(); // Stop old listeners before setting up new transaction listener
+            selectedSpecificAccountName = accountName;
+            let titleText = selectedAccountType === 'creditCard' ? 'Credit Card' : 'Savings Bank';
+            
+            // Update Dashboard UI
+            appTitle.textContent = `${titleText}: ${accountName} Ledger`;
+            document.getElementById('current-specific-account-display').textContent = accountName;
+            
+            // Ensure the dashboard form starts clean
+            document.getElementById('transaction-form').reset();
+            document.getElementById('date').value = new Date().toISOString().substring(0, 10);
+
+            // Show Dashboard
+            hideElement(specificAccountSelectionContainer);
+            showElement(appContainer);
+
+            // Load and filter transactions for the specific account
+            setupTransactionListener();
+        }
+
+        // NEW: Navigates from Dashboard back to Specific Account List (e.g., HDFC, Axis)
+        function handleNavigateToSpecificAccountSelection() {
+            // CRITICAL FIX: Ensure transaction listener is stopped
+            if (unsubscribeTransactions) {
+                unsubscribeTransactions();
+            }
+            selectedSpecificAccountName = null; // Clear specific account state
+            
+            // FIX: Explicitly clear the account list UI before showing the screen
+            specificAccountList.innerHTML = ''; 
+            hideElement(specificAccountStatus); // Clear status on screen transition
+
+            hideElement(appContainer);
+            showElement(specificAccountSelectionContainer);
+
+            // IMPROVEMENT: Show instant loading message right before the async call
+            showStatus('Loading your accounts...', 'text-gray-500', specificAccountStatus);
+            
+            // Re-load the list for the current type
+            setupSpecificAccountListener(); 
+        }
+
+        // NEW: Navigates from Dashboard back to Ledger Type Selection (Credit Card vs Savings)
+        function handleNavigateToTypeSelection() {
+            unsubscribeAllListeners(); // Stop all listeners
+            selectedAccountType = null; // Clear type state
+            selectedSpecificAccountName = null; // Clear specific account state
+            hideElement(appContainer);
+            hideElement(specificAccountSelectionContainer);
+            showElement(accountSelectionContainer);
+        }
+
+        // --- SPECIFIC ACCOUNT MANAGEMENT ---
+
+        function setupSpecificAccountListener() {
+            // Unsubscribe existing listener (crucial fix)
+            if (unsubscribeSpecificAccounts) {
+                unsubscribeSpecificAccounts();
+            }
+
+            if (!userId || !selectedAccountType) return;
+
+            const accountsCollectionRef = getSpecificAccountsCollectionPath(selectedAccountType);
+            if (!accountsCollectionRef) return;
+
+            const listEl = document.getElementById('specific-account-list');
+            const noAccountsMessage = document.getElementById('no-accounts-message');
+            
+            // Show a dynamic loading state immediately while data fetches
+            listEl.innerHTML = '<p class="text-gray-500">Loading accounts...</p>';
+            hideElement(noAccountsMessage);
+
+            // FIX: Removed ordering clause to ensure compatibility and reliability with all accounts.
+            const q = query(accountsCollectionRef);
+            
+            // Set up new listener and save the unsubscribe function
+            unsubscribeSpecificAccounts = onSnapshot(q, (snapshot) => {
+                // Hide the instant loading message once data arrives
+                hideElement(specificAccountStatus); 
+                
+                listEl.innerHTML = '';
+                const accounts = [];
+                snapshot.forEach(doc => {
+                    accounts.push({ id: doc.id, ...doc.data() });
+                });
+
+                if (accounts.length === 0) {
+                    showElement(noAccountsMessage);
+                    listEl.innerHTML = ''; // Ensure list is truly empty if no accounts
+                } else {
+                    hideElement(noAccountsMessage);
+                    accounts.forEach(account => {
+                        
+                        const wrapper = document.createElement('div');
+                        wrapper.className = 'flex items-center justify-between bg-gray-100 rounded-lg p-3 hover:bg-gray-200 transition duration-150 cursor-pointer';
+
+                        const selectBtn = document.createElement('button');
+                        selectBtn.textContent = account.name;
+                        selectBtn.className = 'flex-1 text-left text-lg font-medium text-gray-800 focus:outline-none';
+                        selectBtn.addEventListener('click', () => handleSpecificAccountSelect(account.name));
+                        
+                        const deleteBtn = document.createElement('button');
+                        deleteBtn.innerHTML = `
+                            <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+                                <path fill-rule="evenodd" d="M9 2a1 1 0 00-.894.553L7.382 4H4a1 1 0 000 2v10a2 2 0 002 2h8a2 2 0 002-2V6a1 1 0 100-2h-3.382l-.724-1.447A1 1 0 0011 2H9zM7 8a1 1 0 012 0v6a1 1 0 11-2 0V8zm5-1a1 1 0 00-1 1v6a1 1 0 102 0V8a1 1 0 00-1-1z" clip-rule="evenodd" />
+                            </svg>
+                        `;
+                        deleteBtn.className = 'text-red-500 hover:text-red-700 ml-4 p-1 rounded-full hover:bg-red-200 transition duration-150 flex-shrink-0';
+                        deleteBtn.setAttribute('title', `Delete ${account.name}`);
+                        deleteBtn.addEventListener('click', (e) => {
+                            e.stopPropagation(); // IMPORTANT: Stops the click from opening the ledger
+                            handleDeleteAccount(account.id, account.name);
+                        });
+
+                        wrapper.appendChild(selectBtn);
+                        wrapper.appendChild(deleteBtn);
+                        listEl.appendChild(wrapper);
+                    });
+                }
+            }, (error) => {
+                console.error("Error fetching specific accounts: ", error);
+                listEl.innerHTML = `<p class="text-red-600">Error loading accounts. Please check Firebase Rules or your network connection.</p>`;
+            });
+        }
+
+        async function handleAddSpecificAccount(e) {
+            e.preventDefault();
+            const newAccountName = document.getElementById('new-account-name').value.trim();
+            
+            if (!newAccountName || !userId || !selectedAccountType) return;
+
+            const accountsCollectionRef = getSpecificAccountsCollectionPath(selectedAccountType);
+            if (!accountsCollectionRef) return;
+            
+            try {
+                // Add account to Firestore
+                await addDoc(accountsCollectionRef, { 
+                    name: newAccountName,
+                    createdAt: new Date().toISOString() 
+                });
+                
+                document.getElementById('new-account-name').value = '';
+                
+                // Navigate directly to the main dashboard for the newly created account
+                handleSpecificAccountSelect(newAccountName); 
+                
+            } catch (error) {
+                console.error("Error adding specific account: ", error);
+                showStatus('Could not add account. See console.', 'text-red-600', specificAccountStatus);
+            }
+        }
+
+        // --- ACCOUNT DELETION ---
+
+        async function handleDeleteAccount(accountId, accountName) {
+            // Custom confirmation dialog replacement
+            if (!window.confirm(`Are you sure you want to delete the account: ${accountName}? This action cannot be undone and can only proceed if the account is empty.`)) {
+                return;
+            }
+            
+            if (!userId || !db || !selectedAccountType) {
+                showStatus('Application state error. Cannot proceed.', 'text-red-600', specificAccountStatus);
+                return;
+            }
+
+            const accountsCollectionRef = getSpecificAccountsCollectionPath(selectedAccountType);
+            const transactionsCollectionRef = getCollectionPath(selectedAccountType);
+
+            if (!accountsCollectionRef || !transactionsCollectionRef) return;
+
+            // IMPORTANT: Check if there are associated transactions first
+            try {
+                // We limit the query to 1 document. If it's not empty, we know transactions exist.
+                const q = query(transactionsCollectionRef, where('account', '==', accountName), limit(1));
+                const transactionSnapshot = await getDocs(q); 
+
+                if (!transactionSnapshot.empty) {
+                    showStatus(`Cannot delete "${accountName}". Please **delete all associated transactions** from the main ledger first.`, 'text-red-600', specificAccountStatus);
+                    return;
+                }
+
+                // Proceed with account document deletion
+                const docRef = doc(accountsCollectionRef, accountId);
+                await deleteDoc(docRef);
+                showStatus(`Account "${accountName}" deleted successfully.`, 'text-green-600', specificAccountStatus);
+
+            } catch (error) {
+                console.error("Error checking or deleting account:", error);
+                showStatus('Error deleting account. Check Firebase rules or console.', 'text-red-600', specificAccountStatus);
+            }
+        }
+
+
+        // --- AUTHENTICATION FUNCTIONS (UNCHANGED) ---
+
+        async function initFirebase() {
+            if (firebaseConfig.apiKey === "YOUR_FIREBASE_API_KEY") {
+                const message = 'Local setup incomplete. Replace the Firebase placeholders in the code to enable authentication and data persistence.';
+                showStatus(message, 'text-red-600', authStatusEl);
+                document.getElementById('loading-indicator').textContent = 'Database not configured. Cannot load data.';
+                return;
+            }
+            
+            try {
+                const app = initializeApp(firebaseConfig);
+                db = getFirestore(app);
+                auth = getAuth(app);
+                
+                onAuthStateChanged(auth, (user) => {
+                    if (user) {
+                        userId = user.uid;
+                        hideElement(authContainer);
+                        
+                        if (!selectedAccountType || !selectedSpecificAccountName) {
+                            // First login or coming back from logout, show account type selection
+                            showElement(accountSelectionContainer);
+                            hideElement(appContainer);
+                            hideElement(specificAccountSelectionContainer);
+                        } else {
+                            // User previously selected an account, bypass type selection
+                            hideElement(accountSelectionContainer);
+                            hideElement(specificAccountSelectionContainer);
+                            showElement(appContainer);
+                            // Set header text in case of refresh
+                            let titleText = selectedAccountType === 'creditCard' ? 'Credit Card' : 'Savings Bank';
+                            appTitle.textContent = `${titleText}: ${selectedSpecificAccountName} Ledger`;
+                            document.getElementById('current-specific-account-display').textContent = selectedSpecificAccountName;
+                            setupTransactionListener(); 
+                        }
+                    } else {
+                        userId = null;
+                        selectedAccountType = null;
+                        selectedSpecificAccountName = null;
+                        unsubscribeAllListeners(); // Also unsubscribe on auth state change (e.g., refresh with no user)
+                        hideElement(appContainer);
+                        hideElement(specificAccountSelectionContainer);
+                        showElement(authContainer);
+                    }
+                });
+
+            } catch (error) {
+                console.error("Error during Firebase initialization:", error);
+                const message = 'ERROR: Firebase initialization failed. Check console and your Firebase config.';
+                showStatus(message, 'text-red-600', authStatusEl);
+            }
+        }
+
+        async function handleAuth(e) {
+            e.preventDefault();
+            const email = document.getElementById('auth-email').value;
+            const password = document.getElementById('auth-password').value;
+
+            if (!email || !password) {
+                showStatus('Email and password are required.', 'text-red-600', authStatusEl);
+                return;
+            }
+            
+            if (!auth) {
+                showStatus('Error: Firebase services are not initialized yet. Please wait a moment and try again.', 'text-red-600', authStatusEl);
+                return;
+            }
+
+            try {
+                authSubmitBtn.disabled = true;
+                showStatus(isSigningUp ? 'Signing up...' : 'Signing in...', 'text-gray-500', authStatusEl);
+
+                if (isSigningUp) {
+                    await createUserWithEmailAndPassword(auth, email, password);
+                } else {
+                    await signInWithEmailAndPassword(auth, email, password);
+                }
+                
+                showStatus('Success! Redirecting...', 'text-green-600', authStatusEl);
+            } catch (error) {
+                let errorMessage = 'An unknown error occurred.';
+                if (error.code === 'auth/user-not-found' || error.code === 'auth/invalid-credential') {
+                    errorMessage = 'Invalid email or password.';
+                } else if (error.code === 'auth/email-already-in-use') {
+                    errorMessage = 'Email is already in use. Try signing in.';
+                } else if (error.code) {
+                    errorMessage = error.message; 
+                }
+                showStatus(errorMessage, 'text-red-600', authStatusEl);
+                console.error("Auth Error:", error);
+            } finally {
+                authSubmitBtn.disabled = false;
+            }
+        }
+
+        async function handlePasswordReset() {
+            if (firebaseConfig.apiKey === "YOUR_FIREBASE_API_KEY") {
+                showStatus('Setup Error: Replace the Firebase placeholders first.', 'text-red-600', authStatusEl);
+                return;
+            }
+
+            if (!auth) {
+                showStatus('Error: Firebase services are not initialized yet. Please wait a moment and try again.', 'text-red-600', authStatusEl);
+                return;
+            }
+            
+            let email = document.getElementById('auth-email').value.trim();
+            if (!email) {
+                showStatus('Please enter your email address in the field above before clicking "Forgot Password".', 'text-yellow-600', authStatusEl);
+                return;
+            }
+
+            try {
+                document.getElementById('auth-submit-btn').disabled = true; 
+                showStatus(`Sending reset email to ${email}...`, 'text-gray-500', authStatusEl);
+
+                await sendPasswordResetEmail(auth, email);
+                showStatus(`Password reset email sent to ${email}. Check your inbox!`, 'text-green-600', authStatusEl);
+            } catch (error) {
+                let errorMessage = 'Could not send reset email.';
+                if (error.code === 'auth/user-not-found') {
+                    errorMessage = 'No user found with that email.';
+                } else if (error.code === 'auth/invalid-email') {
+                    errorMessage = 'Invalid email format.';
+                } else {
+                    errorMessage = error.message;
+                }
+                showStatus(errorMessage, 'text-red-600', authStatusEl);
+                console.error("Password Reset Error:", error);
+            } finally {
+                document.getElementById('auth-submit-btn').disabled = false; 
+            }
+        }
+
+        function toggleAuthMode() {
+            isSigningUp = !isSigningUp;
+            if (isSigningUp) {
+                authTitle.textContent = 'Sign Up';
+                authSubmitBtn.textContent = 'Sign Up';
+                authToggleBtn.textContent = 'Already have an account? Sign In';
+            } else {
+                authTitle.textContent = 'Sign In';
+                authSubmitBtn.textContent = 'Sign In';
+                authToggleBtn.textContent = 'Need an account? Sign Up';
+            }
+            hideElement(authStatusEl);
+        }
+
+        // --- TRANSACTION LISTENER (READ OPERATION) ---
+
+        function setupTransactionListener() {
+            // Unsubscribe existing listener before setting up new one
+            if (unsubscribeTransactions) {
+                unsubscribeTransactions();
+            }
+
+            if (!userId || !selectedAccountType || !selectedSpecificAccountName) {
+                document.getElementById('loading-indicator').textContent = 'Please select a specific account.';
+                return;
+            }
+
+            const transactionsCollectionRef = getCollectionPath(selectedAccountType);
+            if (!transactionsCollectionRef) return;
+            
+            // Query: Filter by the selected specific account name and order by timestamp
+            const q = query(
+                transactionsCollectionRef, 
+                where('account', '==', selectedSpecificAccountName),
+                orderBy('timestamp', 'desc')
+            );
+
+            // Real-time listener
+            unsubscribeTransactions = onSnapshot(q, (snapshot) => {
+                allTransactions = []; // Reset global array
+                snapshot.forEach((doc) => {
+                    const data = doc.data();
+                    const amount = parseFloat(data.amount);
+                    allTransactions.push({ id: doc.id, ...data, amount });
+                });
+                
+                // When new data arrives, apply current date filters and render
+                applyFiltersAndRender(); 
+            }, (error) => {
+                console.error("Error fetching transactions: ", error);
+                document.getElementById('loading-indicator').innerHTML = `
+                    <span class="text-red-600 font-semibold">Error fetching data.</span>
+                    This is likely because a **Composite Index is missing** in Firestore for this query.
+                    Please check your browser console for an error message which may contain a direct link to create the required index.
+                `;
+            });
+        }
+        
+        // --- FILTERING AND RENDERING ---
+        
+        function applyFiltersAndRender() {
+            const startDateStr = document.getElementById('filter-start-date').value;
+            const endDateStr = document.getElementById('filter-end-date').value;
+
+            let filteredTransactions = allTransactions;
+
+            if (startDateStr || endDateStr) {
+                const startDate = startDateStr ? new Date(startDateStr + 'T00:00:00') : null;
+                const endDate = endDateStr ? new Date(endDateStr + 'T23:59:59') : null; 
+
+                filteredTransactions = allTransactions.filter(t => {
+                    const transactionDate = new Date(t.date + 'T00:00:00'); 
+
+                    let passesStart = true;
+                    if (startDate) {
+                        passesStart = transactionDate >= startDate;
+                    }
+
+                    let passesEnd = true;
+                    if (endDate) {
+                        passesEnd = transactionDate <= endDate;
+                    }
+                    
+                    return passesStart && passesEnd;
+                });
+            }
+
+            let totalCredit = 0;
+            let totalDebit = 0;
+
+            filteredTransactions.forEach(t => {
+                if (t.type === 'credit') {
+                    totalCredit += t.amount;
+                } else if (t.type === 'debit') {
+                    totalDebit += t.amount;
+                }
+            });
+
+            // Call the original render function with the filtered list and new totals
+            renderTransactions(filteredTransactions, totalCredit, totalDebit);
+        }
+
+
+        function renderTransactions(transactions, totalCredit, totalDebit) {
+            const listElement = document.getElementById('transaction-list');
+            const netBalance = totalCredit - totalDebit;
+
+            // 1. Update Summary
+            document.getElementById('total-credit').textContent = formatCurrency(totalCredit);
+            document.getElementById('total-debit').textContent = formatCurrency(totalDebit);
+            document.getElementById('net-balance').textContent = formatCurrency(netBalance);
+            document.getElementById('net-balance').className = netBalance >= 0 ? 'text-2xl font-bold mt-1 credit' : 'text-2xl font-bold mt-1 debit';
+
+            // 2. Update Transaction List
+            listElement.innerHTML = '';
+            
+            if (transactions.length === 0) {
+                listElement.innerHTML = '<tr><td colspan="6" class="px-3 py-4 text-center text-gray-500">No transactions recorded yet in this ledger.</td></tr>';
+                return;
+            }
+
+            transactions.forEach(transaction => {
+                const isDebit = transaction.type === 'debit';
+                const row = document.createElement('tr');
+                row.className = 'hover:bg-gray-50 transition duration-100';
+                
+                const formattedDate = new Date(transaction.date + 'T00:00:00').toLocaleDateString('en-US', {
+                    year: 'numeric',
+                    month: 'short',
+                    day: 'numeric'
+                });
+
+                row.innerHTML = `
+                    <td class="px-3 py-3 whitespace-nowrap text-sm text-gray-500">${formattedDate}</td>
+                    <td class="px-3 py-3 whitespace-nowrap text-sm font-medium text-gray-900">${transaction.account}</td>
+                    <td class="px-3 py-3 text-sm text-gray-900">${transaction.description}</td>
+                    <td class="px-3 py-3 whitespace-nowrap text-sm text-gray-700 font-semibold">${transaction.category || 'N/A'}</td>
+                    <td class="px-3 py-3 whitespace-nowrap text-right text-sm font-bold ${isDebit ? 'debit' : 'credit'}">
+                        ${isDebit ? '-' : '+'}${formatCurrency(transaction.amount)}
+                    </td>
+                    <td class="px-3 py-3 whitespace-nowrap text-center text-sm font-medium">
+                        <button data-id="${transaction.id}" class="delete-btn text-red-500 hover:text-red-700 transition duration-150">
+                            <!-- Trash Icon -->
+                            <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 inline" viewBox="0 0 20 20" fill="currentColor">
+                                <path fill-rule="evenodd" d="M9 2a1 1 0 00-.894.553L7.382 4H4a1 1 0 000 2v10a2 2 0 002 2h8a2 2 0 002-2V6a1 1 0 100-2h-3.382l-.724-1.447A1 1 0 0011 2H9zM7 8a1 1 0 012 0v6a1 1 0 11-2 0V8zm5-1a1 1 0 00-1 1v6a1 1 0 102 0V8a1 1 0 00-1-1z" clip-rule="evenodd" />
+                            </svg>
+                        </button>
+                    </td>
+                `;
+                listElement.appendChild(row);
+            });
+
+            // Attach event listeners to delete buttons
+            listElement.querySelectorAll('.delete-btn').forEach(button => {
+                button.addEventListener('click', handleDelete);
+            });
+        }
+
+        // --- DELETE OPERATION (Transaction) ---
+
+        async function handleDelete(event) {
+            const transactionId = event.currentTarget.dataset.id;
+            if (!transactionId || !userId || !db || !selectedAccountType) return;
+
+            const collectionRef = getCollectionPath(selectedAccountType);
+            if (!collectionRef) return;
+
+            try {
+                const docRef = doc(collectionRef, transactionId);
+                await deleteDoc(docRef);
+                showStatus('Record deleted.', 'text-gray-500', transactionStatusEl);
+            } catch (error) {
+                console.error("Error deleting document: ", error);
+                showStatus('Error deleting record.', 'text-red-600', transactionStatusEl);
+            }
+        }
+
+
+        // --- SUBMIT HANDLER (CREATE OPERATION) ---
+
+        document.getElementById('transaction-form').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            
+            if (!userId || !db || !selectedAccountType || !selectedSpecificAccountName) {
+                showStatus('Error: Select a specific account first.', 'text-red-600', transactionStatusEl);
+                return;
+            }
+
+            const collectionRef = getCollectionPath(selectedAccountType);
+            if (!collectionRef) return;
+
+            const date = document.getElementById('date').value;
+            // REMOVED: const account = document.getElementById('account').value.trim();
+            const description = document.getElementById('description').value.trim();
+            const amount = parseFloat(document.getElementById('amount').value);
+            const type = document.getElementById('type').value;
+            const category = document.getElementById('category').value;
+
+            if (!date || !description || isNaN(amount) || amount <= 0 || !type) {
+                showStatus('Please fill in all fields correctly.', 'text-red-600', transactionStatusEl);
+                return;
+            }
+            
+            const finalCategory = (type === 'debit') ? category : 'Income';
+
+            const transactionData = {
+                date: date,
+                account: selectedSpecificAccountName, // Automatically use the selected account name
+                description: description,
+                amount: amount,
+                type: type,
+                category: finalCategory,
+                timestamp: new Date().toISOString(),
+            };
+
+            try {
+                await addDoc(collectionRef, transactionData);
+                showStatus('Transaction successfully recorded!', 'text-green-600', transactionStatusEl);
+                e.target.reset(); // Clear the form
+                document.getElementById('date').value = new Date().toISOString().substring(0, 10); // Reset date to today
+                document.getElementById('category').value = 'Other'; // Reset category
+            } catch (error) {
+                console.error("Error adding document: ", error);
+                showStatus('Error recording transaction. See console for details.', 'text-red-600', transactionStatusEl);
+            }
+        });
+
+        // --- EVENT LISTENERS ---
+        document.getElementById('auth-form').addEventListener('submit', handleAuth);
+        document.getElementById('auth-toggle-btn').addEventListener('click', toggleAuthMode);
+        
+        // Logout buttons
+        document.getElementById('logout-btn').addEventListener('click', handleLogout);
+        document.getElementById('selection-logout-btn').addEventListener('click', handleLogout);
+
+        document.getElementById('reset-password-btn').addEventListener('click', handlePasswordReset);
+        
+        // Ledger Type Selection buttons
+        document.querySelectorAll('.select-account-type-btn').forEach(button => {
+            button.addEventListener('click', (e) => handleAccountTypeSelection(e.target.dataset.type));
+        });
+        
+        // Specific Account Management Listeners
+        document.getElementById('add-specific-account-form').addEventListener('submit', handleAddSpecificAccount);
+        document.getElementById('specific-selection-back-btn').addEventListener('click', () => {
+            hideElement(specificAccountSelectionContainer);
+            showElement(accountSelectionContainer);
+            selectedAccountType = null;
+        });
+
+        // NEW Dashboard Navigation
+        changeAccountBtn.addEventListener('click', handleNavigateToSpecificAccountSelection);
+        changeLedgerTypeBtn.addEventListener('click', handleNavigateToTypeSelection);
+
+
+        // Filter event listeners
+        document.getElementById('filter-form').addEventListener('submit', (e) => {
+            e.preventDefault();
+            applyFiltersAndRender();
+        });
+
+        document.getElementById('clear-filter-btn').addEventListener('click', () => {
+            document.getElementById('filter-start-date').value = '';
+            document.getElementById('filter-end-date').value = '';
+            applyFiltersAndRender(); // Re-render with cleared filters
+        });
+        
+        // Show/hide category field based on transaction type (only for debit)
+        document.getElementById('type').addEventListener('change', (e) => {
+            if (e.target.value === 'debit') {
+                showElement(categoryField);
+                document.getElementById('category').required = true;
+            } else {
+                hideElement(categoryField);
+                document.getElementById('category').required = false;
+            }
+        });
+
+
+        // --- APP STARTUP ---
+        // Set today's date as default in the form
+        document.getElementById('date').value = new Date().toISOString().substring(0, 10);
+
+        // Initialize Firebase when the window loads
+        window.onload = initFirebase;
+    </script>
+</body>
+</html>
